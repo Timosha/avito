@@ -1,0 +1,290 @@
+<html>
+<head>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    <script>
+        function getUsers() {
+            $.getJSON('get_users.php', function(data) {
+                    $('#UsersTable > tbody').html("");
+                    $(data["users"]).each(function(i, val) {
+                        $('#UsersTable tbody').append('<tr><td>' + val + '</td><td><div class="pull-right"><button class="btn btn-default btn-edit" data-toggle="modal" data-target="#UserEditModal">Edit</button><div></td></tr>');
+                });
+            });
+        }
+
+        function getAllUsersCards() {
+            $.getJSON('get_all_users_cards.php', function(data) {
+                //$('#UsersList').html("");
+                $(data["users"]).each(function(i, user) {
+
+                    var appendString = 
+          '<li class="list-group-item">' +
+                '<div class="panel-group">' +
+                    '<div class="panel panel-default">' +
+                        '<div class="panel-heading">' +
+                            '<a data-toggle="collapse" href="#collapse' + i.toString() + '">' +
+                                '<h4 class="panel-title">'+
+                                    user["login"] +  
+                                '</h4>' +
+                            '</a>' +
+                        '</div>' +
+                        '<div id="collapse' + i.toString() + '" class="panel-collapse collapse">' +
+                            '<ul class="list-group">';
+                                
+                    $(user["addresses"]).each(function(i, address) {
+                        if (address != null) {
+                            appendString += 
+                                '<li class="list-group-item">' +
+                                    '<div class="input-group">' +
+                                        '<input type="text" class="form-control" value="'+ address + '"/>' +
+                                        '<span class="input-group-btn">' +
+                                            '<button class="btn btn-default btn-addr-cancel">Cancel</button>' +
+                                            '<button class="btn btn-info btn-addr-save">Save</button>' +
+                                            '<button class="btn btn-danger btn-addr-rm">Delete</button>' +
+                                        '</span>' +
+                                    '</div>' +
+                                '</li>';
+                        }
+                    });
+                        
+                    appendString +=
+                                '<li class="list-group-item">' +
+                                    '<button class="btn btn-success btn-sm btn-addr-add">Add</button>' +
+                                '</li>'
+                            '</ul>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</li>';
+                    $('#UsersList').append(appendString);
+                });
+            }); 
+        }
+
+        function addUser(name, status) {
+            $.getJSON('add_user.php', {'new_user':name, 'status':status}, function(data) {
+                if (data["status"] == "OK") {
+                    var appendString =
+            '<li class="list-group-item">' +
+                '<div class="panel-group">' +
+                    '<div class="panel panel-default">' +
+                        '<div class="panel-heading">' +
+                            '<a data-toggle="collapse" href="#collapse_' + name + '">' +
+                                '<h4 class="panel-title">'+
+                                    name +
+                                '</h4>' +
+                            '</a>' +
+                        '</div>' +
+                        '<div id="collapse_' + name + '" class="panel-collapse collapse">' +
+                            '<ul class="list-group">' + 
+                                '<li class="list-group-item">' +
+                                    '<button class="btn btn-success btn-sm btn-addr-add">Add</button>' +
+                                '</li>'
+                            '</ul>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>' +
+            '</li>';
+                    $('#UsersList').prepend(appendString);
+                }
+                else {
+                    alert(data['status']);
+                }
+            });
+        }
+
+        function getUserCard(username) {
+            $.getJSON('get_user_card.php', {'login': username}, function(data) {
+                $("#AddressesListContainer > ul").html("");
+                $(data["addresses"]).each(function(i, val) {
+                    $("#AddressesListContainer ul").append(
+                        '<li class="list-group-item">' +
+                            '<input value="' + val + '"/>' +
+                            '<span class="pull-right">' +
+                                '<button class="btn btn-xs btn-default btn-save-addr">Save</button>' +
+                                '<button class="btn btn-xs btn-danger btn-rm-addr">-</button>' +
+                            '</span>' + 
+                        '</li>'
+                    );
+                });
+            });
+        }
+
+        $(document).ready(function () {
+            $('#UserAddModal').on('shown.bs.modal', function () {
+                $('#InputUserName').focus();
+            });
+            $('#AddUserBtn').click(function() {
+                var status = $('#InputStatus').val();
+                if ($.isNumeric(status) && (parseInt(status) == 1 || parseInt(status) == 3)) {
+                    addUser($('#InputUserName').val(), $('#InputStatus').val());
+                    $('#UserAddModal').modal('hide');
+                }
+                else {
+                    alert('Invalid status value');
+                }
+            });
+
+            $(document).on('click', '.btn-edit', function(e) {
+                var username = $(this).closest("tr").find("td:nth-child(1)").text();
+                $("#UserEditModalLabel").text(username);
+                getUserCard(username);
+            });
+
+            $(document).on('click', '.btn-addr-save', function() {
+                var li = $(this).closest('li');
+                var login = li.parent().parent().parent().closest('li').find('.panel-heading').text();
+                var input = li.find('input[type="text"]');
+                var new_addr = input.val();
+                var old_addr = input.prop("defaultValue");
+                if (new_addr != old_addr && old_addr != "") {
+                    $.getJSON('update_user_address.php', {'login': login, 'old_addr': old_addr, 'new_addr': new_addr}, function(data) {
+                        if (data["status"] == "OK") {
+                            input.attr("value", new_addr);
+                        }
+                        else {
+                            input.val(old_addr);
+                            alert(data["message"]);
+                        }
+                    });
+                }
+                if (old_addr == "" && new_addr != "") {
+                    $.getJSON('add_user_address.php', {'login': login, 'new_addr': new_addr}, function(data) {
+                        if (data["status"] == "OK") {
+                            input.attr("value", new_addr);
+                        }
+                        else {
+                            input.val(old_addr);
+                            alert(data["message"]);
+                        }
+                    });
+                }
+            });
+
+            $(document).on('click', '.btn-addr-add', function() {
+                var li = $(this).closest('li');
+                var appendString =
+                                '<li class="list-group-item">' +
+                                    '<div class="input-group">' +
+                                        '<input type="text" class="form-control" value=""/>' +
+                                        '<span class="input-group-btn">' +
+                                            '<button class="btn btn-default btn-addr-cancel">Cancel</button>' +
+                                            '<button class="btn btn-info btn-addr-save">Save</button>' +
+                                            '<button class="btn btn-danger btn-addr-rm">Delete</button>' +
+                                        '</span>' +
+                                    '</div>' +
+                                '</li>';
+                $(appendString).insertBefore(li);
+            });
+
+            $(document).on('click', '.btn-addr-rm', function() {
+                var li = $(this).closest('li');
+                var input = li.find('input[type="text"]');
+                var login = li.parent().parent().parent().closest('li').find('.panel-heading').text();
+                var old_addr = input.prop("defaultValue");
+                if (old_addr != "") {
+                    $.getJSON('remove_user_address.php', {'login': login, 'old_addr': old_addr}, function(data) {
+                        if (data["status"] == "OK") {
+                            input.attr("value", "");
+                        }
+                        else {
+                            alert(data["message"]);
+                        }
+                    }); 
+                }                
+                li.remove();
+            });
+
+            $(document).on('click', '.btn-addr-cancel', function() {
+                var li = $(this).closest('li');
+                var input = li.find('input[type="text"]');
+                input.val(input.prop("defaultValue"));
+
+            });
+
+                        
+            getAllUsersCards();
+        });
+    </script>
+</head>
+   
+    <div class="modal fade" id="UserEditModal" tabindex="-1" role="dialog"  aria-labelledby="companyPositionLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true"></button>
+            <h4 id="UserEditModalLabel"></h4>
+        </div>
+        <div class="modal-body">
+            <!--div id="AddressesListContainer">
+                <h5>Addresses</h5>
+                <ul class="list-group" id="AddressesList"> 
+                </ul>
+            </div-->
+
+
+
+        </div>
+        <div class="modal-footer">
+            <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+            <button data-dismiss="modal" class="btn btn-default" id="btnYes">Confirm</button>
+        </div> 
+        </div>
+        </div>
+    </div>
+</div>
+
+    <div class="modal fade" id="UserAddModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add User</h4>
+                </div>
+                <div class="modal-body">
+                    <form role="form">
+                        <div class="form-group">
+                            <label for="InputUserName">Username:</label>
+                            <input type=text class="form-control" id="InputUserName" placeholder="Username">
+                        </div>
+                        <div class="form-group">
+                            <label for="InputStatus">Status:</label>
+                            <select class="form-control" id="InputStatus" placeholder="Status">
+                                <option>1</option>
+                                <option>3</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="AddUserBtn">Save</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+    
+    <div class="container">
+        <h2>Users
+            <div class="pull-right">
+                <button type="button" class="btn btn-default btn-lg" data-toggle="modal" data-target="#UserAddModal" align="right">
+                    Add
+                </button>
+            </div>
+        </h2>
+        <!--table class="table table-striped" id="UsersTable">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>                        
+            </tbody>
+        </table-->
+        <ul class="list-group" id="UsersList">
+            
+        </ul>
+    </div>
+</html>

@@ -1,0 +1,94 @@
+<html>
+<head>
+    <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    <script>
+        
+        function getAddresses() {
+            $("#AddressesList").html("");
+            $.getJSON('get_addresses.php', function(data) {
+                $(data["addresses"]).each(function(i, address) {
+                
+                    var appendString =
+                        '<li class="list-group-item">' +
+                            '<div class="input-group">' +
+                                '<input type="text" class="form-control" value="'+ address + '" readonly/>' +
+                                '<span class="input-group-btn">' +
+                                    '<button type="button" class="btn btn-info btn-addr-edit" data-toggle="modal" data-target="#AddressEditModal">Edit</button>' +
+                                    //'<button class="btn btn-danger btn-addr-rm">Delete</button>' +
+                                '</span>' +
+                            '</div>' +
+                        '</li>';
+                    
+                    $('#AddressesList').append(appendString);
+                });
+            }); 
+        }
+
+        $(document).ready(function () {
+            var input = null;
+            $('#AddressEditModal').on('hidden.bs.modal', function () {
+                $('#AddressInput').val("");
+            });
+
+            $(document).on('click', '.btn-addr-edit', function () {
+                var li = $(this).closest('li');
+                input = li.find('input[type="text"]');
+                $('#AddressInput').attr("placeholder", input.val());
+            });
+
+            $('#EditAddressBtn').on('click', function() {
+                var old_addr = $('#AddressInput').prop("placeholder");
+                var new_addr = $('#AddressInput').val();
+                if (old_addr != new_addr && new_addr != "") {
+                    $.getJSON('update_address.php', {"old_addr": old_addr, "new_addr": new_addr}, function (data) {
+                        if (data["status"] == "OK") {
+                            $('#AddressEditModal').modal('hide');
+                            //getAddresses();
+                            input.val(new_addr);
+                        }
+                        else {
+                            alert(data["message"]);
+                        }
+                    });
+                }
+            });
+            
+            getAddresses();
+        });
+    </script>
+</head>
+   
+
+    <div class="modal fade" id="AddressEditModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title">Add User</h4>
+                </div>
+                <div class="modal-body">
+                    <form role="form">
+                        <div class="form-group">
+                            <label for="AddressInput">Address:</label>
+                            <input type=text class="form-control" id="AddressInput">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="EditAddressBtn">Save</button>
+                </div>
+            </div><!-- /.modal-content -->
+        </div><!-- /.modal-dialog -->
+    </div><!-- /.modal -->
+    
+    <div class="container">
+        <h2>Addresses</h2>
+
+        <ul class="list-group" id="AddressesList">
+            
+        </ul>
+    </div>
+</html>
